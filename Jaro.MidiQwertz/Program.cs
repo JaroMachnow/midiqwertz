@@ -1,46 +1,19 @@
-﻿using System.Runtime.InteropServices;
-using Melanchall.DryWetMidi.Common;
-using Melanchall.DryWetMidi.Core;
-using Melanchall.DryWetMidi.Interaction;
-using Melanchall.DryWetMidi.Multimedia;
+using Jaro.MidiQwertz.Services;
 
-var devices = InputDevice.GetAll().ToList();
+var midiConnectionService = new MidiConnectionService();
+var inputDevice = midiConnectionService.ConnectStandardDeviceAsync();
 
-if (devices.Count == 0)
+var midiEventService = new MidiEventService(inputDevice);
+
+await foreach (var ev in midiEventService.GetGroupedNoteEventsAsync())
 {
-    Console.WriteLine("No MIDI input devices found.");
-    return;
+    
+    Console.WriteLine($"{string.Join(',', ev.Select(n => n.NoteNumber))}");
 }
 
-Console.WriteLine("MIDI input devices:");
-
-for (var index = 0; index < devices.Count; index++)
-{
-    Console.WriteLine($"{index}: {devices[index].Name}");
-}
-
-Console.Write("Select device number: ");
-
-if (!int.TryParse(Console.ReadLine(), out var deviceIndex) ||
-    deviceIndex < 0 ||
-    deviceIndex >= devices.Count)
-{
-    Console.WriteLine("Invalid device number.");
-
-    foreach (var device in devices)
-    {
-        device.Dispose();
-    }
-
-    return;
-}
-
-var inputDevice = devices[deviceIndex];
-
-foreach (var device in devices.Where(device => device != inputDevice))
-{
-    device.Dispose();
-}
+/*
+var chordTracker = new PianoChordTracker();
+var mappings = MidiKeyMap.CreateDefault();
 
 using (inputDevice)
 using (var recording = new Recording(TempoMap.Default, inputDevice))
@@ -49,28 +22,28 @@ using (var recording = new Recording(TempoMap.Default, inputDevice))
 
     inputDevice.EventReceived += (_, eventArguments) =>
     {
+        var chordChanged = false;
+        PianoChord chord;
+
         switch (eventArguments.Event)
         {
-            case NoteOnEvent noteOnEventSwitch:
-                Console.WriteLine(
-                    $"ON  channel={noteOnEventSwitch.Channel} note={noteOnEventSwitch.NoteNumber} velocity={noteOnEventSwitch.Velocity}");
+            case NoteOnEvent noteOnEvent:
+                chordChanged = chordTracker.ApplyNoteOn(
+                    (byte)noteOnEvent.NoteNumber,
+                    (byte)noteOnEvent.Velocity,
+                    out chord);
                 break;
 
             case NoteOffEvent noteOffEvent:
-                Console.WriteLine(
-                    $"OFF channel={noteOffEvent.Channel} note={noteOffEvent.NoteNumber} velocity={noteOffEvent.Velocity}");
+                chordChanged = chordTracker.ApplyNoteOff(
+                    (byte)noteOffEvent.NoteNumber,
+                    out chord);
                 break;
         }
 
-        NoteOnEvent noteOnEvent = eventArguments.Event as NoteOnEvent;
-
-        if (noteOnEvent.NoteNumber == (SevenBitNumber)60)
+        if (chordChanged && mappings.TryGetValue(chordTracker.Current, out var shortcut))
         {
-            MacKeyboard.PressKey(0);
-        }
-        if (noteOnEvent.NoteNumber == (SevenBitNumber)66)
-        {
-            MacKeyboard.PressKey(0);
+            MacKeyboard.PressShortcut(shortcut);
         }
     };
 
@@ -78,7 +51,7 @@ using (var recording = new Recording(TempoMap.Default, inputDevice))
     recording.Start();
 
     Console.WriteLine($"Recording from: {inputDevice.Name}");
-    Console.WriteLine("Play some notes. Press Enter to stop.");
+    Console.WriteLine("Play mapped chords. Press Enter to stop.");
     Console.ReadLine();
 
     recording.Stop();
@@ -89,8 +62,6 @@ using (var recording = new Recording(TempoMap.Default, inputDevice))
 
 Console.WriteLine("Saved recorded.mid");
 
-
-
 internal static class MacKeyboard
 {
     private const string CoreGraphics =
@@ -99,24 +70,51 @@ internal static class MacKeyboard
     private const string CoreFoundation =
         "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation";
 
-    public static void PressKey(ushort keyCode)
+    public static void PressShortcut(MacShortcut shortcut)
     {
-        var keyDownEvent =
-            CreateKeyboardEvent(IntPtr.Zero, keyCode, true);
+        var keyDownEvents = new List<IntPtr>(shortcut.Keys.Count);
+        var keyUpEvents = new List<IntPtr>(shortcut.Keys.Count);
 
-        var keyUpEvent =
-            CreateKeyboardEvent(IntPtr.Zero, keyCode, false);
+        try
+        {
+            foreach (var key in shortcut.Keys)
+            {
+                keyDownEvents.Add(CreateRequiredKeyboardEvent(key.VirtualKeyCode, keyDown: true));
+                keyUpEvents.Add(CreateRequiredKeyboardEvent(key.VirtualKeyCode, keyDown: false));
+            }
 
-        if (keyDownEvent == IntPtr.Zero || keyUpEvent == IntPtr.Zero)
+            foreach (var keyDownEvent in keyDownEvents)
+            {
+                PostEvent(0, keyDownEvent);
+            }
+
+            for (var index = keyUpEvents.Count - 1; index >= 0; index--)
+            {
+                PostEvent(0, keyUpEvents[index]);
+            }
+        }
+        finally
+        {
+            foreach (var keyboardEvent in keyDownEvents.Concat(keyUpEvents))
+            {
+                if (keyboardEvent != IntPtr.Zero)
+                {
+                    Release(keyboardEvent);
+                }
+            }
+        }
+    }
+
+    private static IntPtr CreateRequiredKeyboardEvent(ushort keyCode, bool keyDown)
+    {
+        var keyboardEvent = CreateKeyboardEvent(IntPtr.Zero, keyCode, keyDown);
+
+        if (keyboardEvent == IntPtr.Zero)
         {
             throw new InvalidOperationException("Could not create keyboard event.");
         }
 
-        PostEvent(0, keyDownEvent);
-        PostEvent(0, keyUpEvent);
-
-        Release(keyDownEvent);
-        Release(keyUpEvent);
+        return keyboardEvent;
     }
 
     [DllImport(CoreGraphics, EntryPoint = "CGEventCreateKeyboardEvent")]
@@ -133,3 +131,4 @@ internal static class MacKeyboard
     [DllImport(CoreFoundation, EntryPoint = "CFRelease")]
     private static extern void Release(IntPtr value);
 }
+*/
