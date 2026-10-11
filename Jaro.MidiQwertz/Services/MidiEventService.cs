@@ -54,7 +54,7 @@ public class MidiEventService(InputDevice inputDevice)
         {
             if (midiEvent is NoteOnEvent noteOnEvent)
                 currentNotes.Add(noteOnEvent);
-            else if (midiEvent is NoteOffEvent noteOffEvent)
+            else if (midiEvent is NoteOffEvent _ && currentNotes.Count > 0)
             {
                 yield return currentNotes.ToArray();
                 currentNotes.Clear();
