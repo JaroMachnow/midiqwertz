@@ -19,7 +19,7 @@ public enum MacKey : ushort
 
     Comma = 43,
     Period = 47,
-    Minus = 27,
+    Minus = 44,
 
     LeftArrow = 123,
     RightArrow = 124,

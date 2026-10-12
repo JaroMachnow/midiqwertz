@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Melanchall.DryWetMidi.Core;
@@ -48,12 +49,24 @@ public class MidiEventService(InputDevice inputDevice)
     public async IAsyncEnumerable<NoteEvent[]> GetGroupedNoteEventsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        var stopwatch = Stopwatch.StartNew();
         List<NoteEvent> currentNotes = new List<NoteEvent>();
+        long lastEventMilliSeconds = 0;
 
         await foreach (var midiEvent in GetNoteEventsAsync(cancellationToken))
         {
+
             if (midiEvent is NoteOnEvent noteOnEvent)
+            {
+                var currentMs = stopwatch.ElapsedMilliseconds;
+
+                if (currentMs - lastEventMilliSeconds > 100)
+                {
+                    yield return currentNotes.ToArray();
+                    currentNotes.Clear();
+                }
                 currentNotes.Add(noteOnEvent);
+            }
             else if (midiEvent is NoteOffEvent _ && currentNotes.Count > 0)
             {
                 yield return currentNotes.ToArray();

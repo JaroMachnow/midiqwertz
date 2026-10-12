@@ -12,6 +12,11 @@ public static class MacKeySendService
        private const ulong Command = 1UL << 20;
    
        [DllImport(ApplicationServices)]
+       public static extern long CGEventGetIntegerValueField(
+           IntPtr keyboardEvent,
+           int field);
+
+       [DllImport(ApplicationServices)]
        private static extern IntPtr CGEventCreateKeyboardEvent(
            IntPtr source,
            ushort virtualKey,
