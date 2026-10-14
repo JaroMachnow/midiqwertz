@@ -23,7 +23,7 @@ public class MidiEventToPianoStrokeTranslationService
 
     private PianoNote TranslateNoteNumberToPianoNote(int noteNumber)
     {
-        var modulo = noteNumber % 24;
+        var modulo = noteNumber % 12;
         return (PianoNote)(1 << modulo);
     }
 
@@ -32,9 +32,8 @@ public class MidiEventToPianoStrokeTranslationService
         return velocity switch
         {
             0 => PianoPressure.None,
-            >0 and <32 => PianoPressure.I,
-            >=32 and <64 => PianoPressure.II,
-            >=64  => PianoPressure.III,
+            >0 and <96 => PianoPressure.I,
+            >=96  => PianoPressure.II,
             _ => PianoPressure.None
         };
     }

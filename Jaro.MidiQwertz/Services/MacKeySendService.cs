@@ -31,12 +31,22 @@ public static class MacKeySendService
        [DllImport(ApplicationServices)]
        private static extern void CFRelease(IntPtr reference);
 
-       public static void SendKey(MacKey key, MacModifier modifiers = MacModifier.None)
+       public static void SendKeyUpDown(MacKey key, MacModifier modifiers = MacModifier.None)
        {
-           SendKey((ushort)key, (ulong)modifiers);
+           SendKeyUpDown((ushort)key, (ulong)modifiers);
+       }
+
+       public static void SendKeyUp(MacKey key, MacModifier modifiers = MacModifier.None)
+       {
+           SendKeyUp((ushort)key, (ulong)modifiers);
+       }
+
+       public static void SendKeyDown(MacKey key, MacModifier modifiers = MacModifier.None)
+       {
+           SendKeyDown((ushort)key, (ulong)modifiers);
        }
    
-       public static void SendKey(ushort keyCode, ulong modifiers = 0)
+       public static void SendKeyUpDown(ushort keyCode, ulong modifiers = 0)
        {
            var keyDown = CGEventCreateKeyboardEvent(IntPtr.Zero, keyCode, true);
            var keyUp = CGEventCreateKeyboardEvent(IntPtr.Zero, keyCode, false);
@@ -58,6 +68,44 @@ public static class MacKeySendService
            {
                CFRelease(keyDown);
                CFRelease(keyUp);
+           }
+       }
+
+       public static void SendKeyUp(ushort keyCode, ulong modifiers = 0)
+       {
+           var keyUp = CGEventCreateKeyboardEvent(IntPtr.Zero, keyCode, false);
+   
+           if (keyUp == IntPtr.Zero)
+               throw new InvalidOperationException("Could not create a macOS keyboard event.");
+   
+           try
+           {
+               CGEventSetFlags(keyUp, modifiers);
+   
+               CGEventPost(HidEventTap, keyUp);
+           }
+           finally
+           {
+               CFRelease(keyUp);
+           }
+       }
+
+       public static void SendKeyDown(ushort keyCode, ulong modifiers = 0)
+       {
+           var keyDown = CGEventCreateKeyboardEvent(IntPtr.Zero, keyCode, true);
+   
+           if (keyDown == IntPtr.Zero)
+               throw new InvalidOperationException("Could not create a macOS keyboard event.");
+   
+           try
+           {
+               CGEventSetFlags(keyDown, modifiers);
+   
+               CGEventPost(HidEventTap, keyDown);
+           }
+           finally
+           {
+               CFRelease(keyDown);
            }
        }
 }
