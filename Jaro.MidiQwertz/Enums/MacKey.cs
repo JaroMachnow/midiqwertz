@@ -7,6 +7,7 @@ public enum MacKey : ushort
     Q = 12, W = 13, E = 14, R = 15, Z = 16, T = 17,
     One = 18, Two = 19, Three = 20, Four = 21,
     Six = 22, Five = 23, Nine = 25, Seven = 26,
+    Sz = 27,
     Eight = 28, Zero = 29,
     O = 31, U = 32, I = 34, P = 35,
     Return = 36, L = 37, J = 38, K = 40,

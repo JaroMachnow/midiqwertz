@@ -13,8 +13,6 @@ await foreach (var ev in midiEventService.AggregateNotesAsync(midiEventService.G
 {
     if (ev.Length == 0) continue;
     var pianoStroke = midiEventToPianoStrokeTranslationService.GetPianoStrokeFromNoteEventArray(ev);
-    Console.WriteLine(pianoStroke.Note);
-    continue;
     var key = midiToKeyTranslationService.Translate(pianoStroke);
     if (key is not null)
         MacKeySendService.SendKeyUpDown(key.Value.Key, key.Value.Modifiers);
